@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, Clock, MapPin, ExternalLink, UserPlus, Search, X, Share2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, ExternalLink, UserPlus, Search, X, Share2, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card } from '@/components/ui/Card';
@@ -10,7 +10,7 @@ import { CapacityBar } from '@/components/ui/CapacityBar';
 import { StatusBadge, RoleBadge, ParticipantStatusBadge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { Avatar } from '@/components/ui/Avatar';
-import { Modal } from '@/components/ui/Modal';
+import { Modal, ConfirmModal } from '@/components/ui/Modal';
 import { AuthGateModal } from '@/components/ui/AuthGateModal';
 import { useEvent } from '@/hooks/useEvent';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,6 +39,8 @@ export function EventDetailView() {
   
   // Modal state
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -195,6 +197,19 @@ export function EventDetailView() {
     }
   };
 
+  // Delete event (for admins and owners)
+  const handleDelete = async () => {
+    if (!eventId) return;
+    setIsDeleting(true);
+    try {
+      await eventService.delete(eventId);
+      navigate(ROUTES.HOME);
+    } catch (err) {
+      console.error('Failed to delete event:', err);
+      setIsDeleting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <PageLayout showBack showBottomNav={false}>
@@ -299,7 +314,7 @@ export function EventDetailView() {
         {/* Admin Controls - only show if user is authenticated and has permissions */}
         {user && canManage && (
           <Card>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-medium text-slate-900 dark:text-slate-100">
                 Manage Event
               </h3>
@@ -310,6 +325,15 @@ export function EventDetailView() {
                 <UserPlus className="w-4 h-4" />
                 Invite Players
               </Button>
+            </div>
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Event
+              </button>
             </div>
           </Card>
         )}
@@ -527,6 +551,19 @@ export function EventDetailView() {
           onSuccess={onAuthSuccess}
           title={modalTitle}
           message={modalMessage}
+        />
+
+        {/* Delete Confirmation Modal */}
+        <ConfirmModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDelete}
+          title="Delete Event"
+          message={`Are you sure you want to delete "${event.name}"? This action cannot be undone and all participant data will be permanently removed.`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          variant="danger"
+          loading={isDeleting}
         />
       </div>
     </PageLayout>

@@ -144,6 +144,28 @@ export const eventService = {
     });
   },
 
+  // Delete event (permanently removes from database)
+  async delete(eventId: string): Promise<void> {
+    // First, delete all participants subcollection
+    const participantsRef = collection(db, 'events', eventId, 'participants');
+    const participantsSnap = await getDocs(participantsRef);
+    
+    // Use a batch to delete all participants
+    const { writeBatch } = await import('firebase/firestore');
+    const batch = writeBatch(db);
+    
+    participantsSnap.docs.forEach((participantDoc) => {
+      batch.delete(participantDoc.ref);
+    });
+    
+    // Delete the event document itself
+    const eventRef = doc(db, 'events', eventId);
+    batch.delete(eventRef);
+    
+    // Commit the batch
+    await batch.commit();
+  },
+
   // Check if event code is unique
   async isEventCodeUnique(eventCode: string, excludeEventId?: string): Promise<boolean> {
     const eventsRef = collection(db, 'events');
